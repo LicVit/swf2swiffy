@@ -29,7 +29,7 @@ class ShapeWithStyle:
         while True:
             record, reader = self.read_record_data(reader)
             self.shape_records.append(record)
-            if record.is_end:
+            if isinstance(record, EndShapeRecord):
                 break
         offset += reader.offset
         return offset
@@ -60,6 +60,9 @@ class ShapeWithStyle:
 
 
 class ShapeRecord:
+    def __init__(self, type_flag):
+        self.type_flag = type_flag
+
     def read_data(self, data):
         raise NotImplementedError
 
@@ -178,7 +181,7 @@ class LineStyle:
 
 class StyleChangeRecord(ShapeRecord):
     def __init__(self, num_fill_bits, num_line_bits, end_flag, **kwargs):
-        self.type_flag = 0
+        super().__init__(type_flag=0)
         self.move_delta_x = kwargs.get('move_delta_x')
         self.move_delta_y = kwargs.get('move_delta_y')
         self.fill_style0 = kwargs.get('fill_style0')
@@ -189,7 +192,6 @@ class StyleChangeRecord(ShapeRecord):
         self.num_fill_bits = num_fill_bits
         self.num_line_bits = num_line_bits
         self.shape_generation = kwargs.get('shape_generation')
-        self.type_flag = kwargs.get('shape_generation')
         self.state_new_styles = end_flag & 0x10 > 0
         self.state_line_style = end_flag & 0x8 > 0
         self.state_fill_style1 = end_flag & 0x4 > 0
@@ -243,7 +245,7 @@ class StyleChangeRecord(ShapeRecord):
 
 class CurvedEdgeRecord(ShapeRecord):
     def __init__(self, **kwargs):
-        self.type_flag = 1
+        super().__init__(type_flag=1)
         self.straight_flag = 0
         self.num_bits = kwargs.get('num_bits')
         self.control_delta_x = kwargs.get('control_delta_x')
@@ -269,7 +271,7 @@ class CurvedEdgeRecord(ShapeRecord):
 
 class StraightEdgeRecord(ShapeRecord):
     def __init__(self, **kwargs):
-        self.type_flag = 1
+        super().__init__(type_flag=1)
         self.straight_flag = 1
         self.num_bits = kwargs.get('num_bits')
         self.general_line_flag = kwargs.get('general_line_flag')
@@ -298,7 +300,7 @@ class StraightEdgeRecord(ShapeRecord):
 
 class EndShapeRecord(ShapeRecord):
     def __init__(self):
-        self.is_end = True
+        super().__init__(type_flag=0)
 
     def read_data(self, bit_reader):
         return bit_reader

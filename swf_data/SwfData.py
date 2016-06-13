@@ -24,6 +24,12 @@ class SwfData:
         return 'SwfData(%r, %r)' % (self.head, self.tags)
 
 
+def get_swf(data):
+    ret = SwfData()
+    ret.read_data(data)
+    return ret
+
+
 class SwfHead:
     def __init__(self, head_str=None, version=None, size=None, display_rect=None, frame_rate=None, frame_count=None):
         self.head_str = head_str
@@ -212,7 +218,12 @@ class DefineSprite(SwfTag):
             offset = 2
             self.frame_count = struct.unpack_from("H", tag_data, offset)[0]
             offset += 2
-            self.control_tags = offset
+            if self.frame_count > 0:
+                self.control_tags = list()
+                while offset < len(tag_data):
+                    tag = SwfTag()
+                    offset = tag.read_data(tag_data, offset)
+                    self.control_tags.append(tag.analyze_tag())
 
     def __repr__(self):
         return 'DefineSprite(sprite_id=%r, frame_count=%r, control_tags=%r)' % (
@@ -241,7 +252,7 @@ class PlaceObject2(SwfTag):
             self.has_character = int(self.has_character is not None)
             self.has_move = int(self.has_move is not None)
         else:
-            super().__init__(code=39, tag_data=tag_data)
+            super().__init__(code=26, tag_data=tag_data)
             reader = BitReader.memory_reader(tag_data)
             self.has_clip_actions = reader.read(1)
             self.has_clip_depth = reader.read(1)
@@ -252,11 +263,11 @@ class PlaceObject2(SwfTag):
             self.has_character = reader.read(1)
             self.has_move = reader.read(1)
             offset = reader.offset
-            self.depth = struct.unpack_from('H', tag_data, offset)
+            self.depth = struct.unpack_from('H', tag_data, offset)[0]
             offset += 2
             reader.skip_bytes(2)
             if self.has_character:
-                self.character_id = struct.unpack_from('H', tag_data, offset)
+                self.character_id = struct.unpack_from('H', tag_data, offset)[0]
                 offset += 2
                 reader.skip_bytes(2)
             if self.has_matrix:
@@ -265,7 +276,7 @@ class PlaceObject2(SwfTag):
             if self.has_color_transform:
                 raise NotImplementedError
             if self.has_ratio:
-                self.ratio = struct.unpack_from('H', tag_data, offset)
+                self.ratio = struct.unpack_from('H', tag_data, offset)[0]
                 offset += 2
                 reader.skip_bytes(2)
             if self.has_name:
@@ -278,11 +289,6 @@ class PlaceObject2(SwfTag):
                 reader.skip_bytes(2)
             if self.has_clip_actions:
                 raise NotImplementedError
-
-            offset = 2
-            self.frame_count = struct.unpack_from("H", tag_data, offset)[0]
-            offset += 2
-            self.control_tags = offset
 
     def __repr__(self):
         ret = 'PlaceObject2(depth=%r' % self.depth
