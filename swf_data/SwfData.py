@@ -95,8 +95,12 @@ class SwfTag:
             return DefineShape(tag_data=self.tag_data)
         elif self.code == 9:
             return SetBackgroundColor(tag_data=self.tag_data)
+        elif self.code == 22:
+            return DefineShape(2, tag_data=self.tag_data)
         elif self.code == 26:
             return PlaceObject2(tag_data=self.tag_data)
+        elif self.code == 32:
+            return DefineShape(3, tag_data=self.tag_data)
         elif self.code == 39:
             return DefineSprite(tag_data=self.tag_data)
         elif self.code == 69:
@@ -183,25 +187,36 @@ class SetBackgroundColor(SwfTag):
 
 
 class DefineShape(SwfTag):
-    def __init__(self, **kwargs):
+    def __init__(self, shape_generation=1, **kwargs):
         tag_data = kwargs.get('tag_data')
+        if shape_generation == 1:
+            code = 2
+        elif shape_generation == 2:
+            code = 22
+        elif shape_generation == 3:
+            code = 32
+        else:
+            raise NotImplementedError
         if tag_data is None:
-            super().__init__(code=2)
+            super().__init__(code=code)
             self.shape_id = kwargs.get('shape_id')
             self.shape_bounds = eval(kwargs.get('shape_bounds'))
             self.shapes = eval(kwargs.get('shapes'))
         else:
-            super().__init__(code=2, tag_data=tag_data)
+            super().__init__(code=code, tag_data=tag_data)
             self.shape_id = struct.unpack_from("H", tag_data)[0]
             offset = 2
             reader = BitReader.memory_reader(tag_data, offset)
             self.shape_bounds = reader.read_rectangle()
             offset += reader.offset
-            self.shapes = ShapeWithStyle(shape_generation=1)
+            self.shapes = ShapeWithStyle(shape_generation=shape_generation)
             self.shapes.read_data(tag_data[offset:])
 
     def __repr__(self):
         return 'DefineShape(shape_id=%r, shape_bounds=%r, shapes=%r)' % (self.shape_id, self.shape_bounds, self.shapes)
+
+    def __str__(self):
+        return 'DefineShape(shape_id=%s, shape_bounds=%s, shapes=%s)' % (self.shape_id, self.shape_bounds, self.shapes)
 
 
 class DefineSprite(SwfTag):
@@ -274,7 +289,8 @@ class PlaceObject2(SwfTag):
                 self.matrix = reader.read_matrix()
                 offset = reader.offset
             if self.has_color_transform:
-                raise NotImplementedError
+                self.color_transform = reader.read_matrix()
+                offset = reader.offset
             if self.has_ratio:
                 self.ratio = struct.unpack_from('H', tag_data, offset)[0]
                 offset += 2

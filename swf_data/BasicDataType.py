@@ -1,5 +1,6 @@
 import struct
 
+
 class RGB:
     def __init__(self, red, green, blue):
         self.red = red
@@ -9,6 +10,9 @@ class RGB:
 
     def __repr__(self):
         return 'RGB(%r, %r, %r)' % (self.red, self.green, self.blue)
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
 
 
 class RGBA(RGB):

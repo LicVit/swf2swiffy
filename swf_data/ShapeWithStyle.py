@@ -58,6 +58,20 @@ class ShapeWithStyle:
                    self.fill_styles, self.line_styles, self.num_fill_bits,
                    self.num_line_bits, self.shape_records)
 
+    def __str__(self):
+        ret = 'ShapeWithStyle:\n' \
+               '  fill_styles=%s,\n' \
+               '  line_styles=%s,\n' \
+               '  num_fill_bits=%s,\n' \
+               '  num_line_bits=%s,\n' \
+               '  shape_records=\n' % (
+                   self.fill_styles, self.line_styles, self.num_fill_bits,
+                   self.num_line_bits, )
+        for record in self.shape_records:
+            ret += '\t%s\n' % record
+
+        return ret
+
 
 class ShapeRecord:
     def __init__(self, type_flag):
@@ -121,6 +135,9 @@ class FillStyle:
             offset += reader.offset
             raise NotImplementedError
         return offset
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
 
     def __repr__(self):
         return 'FillStyle(%r, %r, %r, %r)' % (self.fill_style_type, self.color, self.gradient_matrix, self.gradient)
@@ -244,14 +261,14 @@ class StyleChangeRecord(ShapeRecord):
 
 
 class CurvedEdgeRecord(ShapeRecord):
-    def __init__(self, **kwargs):
+    def __init__(self, control_delta_x=0, control_delta_y=0, anchor_delta_x=0, anchor_delta_y=0, **kwargs):
         super().__init__(type_flag=1)
         self.straight_flag = 0
         self.num_bits = kwargs.get('num_bits')
-        self.control_delta_x = kwargs.get('control_delta_x')
-        self.control_delta_y = kwargs.get('control_delta_y')
-        self.anchor_delta_x = kwargs.get('anchor_delta_x')
-        self.anchor_delta_y = kwargs.get('anchor_delta_y')
+        self.control_delta_x = control_delta_x
+        self.control_delta_y = control_delta_y
+        self.anchor_delta_x = anchor_delta_x
+        self.anchor_delta_y = anchor_delta_y
         self.is_end = False
 
     def read_data(self, bit_reader):
@@ -263,21 +280,21 @@ class CurvedEdgeRecord(ShapeRecord):
         return bit_reader
 
     def __repr__(self):
-        ret = 'CurvedEdgeRecord(control_delta_x=%r, control_delta_y=%r, anchor_delta_x=%r, anchor_delta_y=%r)' % (
+        ret = 'CurvedEdgeRecord(%r, %r, %r, %r)' % (
             self.control_delta_x, self.control_delta_y, self.anchor_delta_x, self.anchor_delta_y
         )
         return ret
 
 
 class StraightEdgeRecord(ShapeRecord):
-    def __init__(self, **kwargs):
+    def __init__(self, delta_x=0, delta_y=0, **kwargs):
         super().__init__(type_flag=1)
         self.straight_flag = 1
         self.num_bits = kwargs.get('num_bits')
         self.general_line_flag = kwargs.get('general_line_flag')
         self.vert_line_flag = kwargs.get('vert_line_flag')
-        self.delta_x = kwargs.get('delta_x')
-        self.delta_y = kwargs.get('delta_y')
+        self.delta_x = delta_x
+        self.delta_y = delta_y
         self.is_end = False
 
     def read_data(self, bit_reader):
@@ -292,7 +309,7 @@ class StraightEdgeRecord(ShapeRecord):
         return bit_reader
 
     def __repr__(self):
-        ret = 'StraightEdgeRecord(delta_x=%r, delta_y=%r)' % (
+        ret = 'StraightEdgeRecord(%r, %r)' % (
             self.delta_x, self.delta_y
         )
         return ret

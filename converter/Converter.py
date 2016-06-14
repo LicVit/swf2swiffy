@@ -9,12 +9,39 @@ class Converter:
     def __init__(self, data):
         self.swf_data = SwfData.get_swf(data)
         self.swiffy_data = dict()
+        self.json_string = None
 
-    def to_swiffy(self):
-        self._convert_head()
-        self._convert_tags()
-        json_string = json.dumps(self.swiffy_data, indent=2)
-        return json_string
+    def to_swiffy(self, intent=2):
+        if self.json_string is None:
+            self._convert_head()
+            self._convert_tags()
+            self.json_string = json.dumps(self.swiffy_data, indent=intent)
+        return self.json_string
+
+    def to_html(self):
+        head = '<!doctype html>\
+<html>\
+  <head>\
+    <meta charset="utf-8">\
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">\
+    <title>Swiffy Output</title>\
+    <script type="text/javascript" src="http://localhost/snap/dist/runtime-8.0-format.js"></script>\
+    <script> swiffyobject = '
+        foot = ';\
+    </script>\
+    <style>html, body {width: 100%; height: 100%}</style>\
+  </head>\
+  <body style="margin: 0; overflow: hidden">\
+    <div id="swiffycontainer" style="width: 240px; height: 300px">\
+    </div>\
+    <script>\
+      var stage = new swiffy.Stage(document.getElementById(\'swiffycontainer\'),\
+          swiffyobject, {});\
+      stage.start();\
+    </script>\
+  </body>\
+</html>'
+        return head + self.to_swiffy() + foot
 
     def _convert_tags(self):
         for tag in self.swf_data.tags:  # type: SwfData.SwfTag
@@ -61,6 +88,8 @@ class Converter:
                 ret['name'] = tag.name
             if tag.has_character:
                 ret['id'] = tag.character_id
+            if tag.has_move:
+                ret['replace'] = True
             if tag.has_matrix:
                 matrix = tag.matrix
                 ret['matrix'] = matrix_to_string(matrix)
@@ -95,35 +124,35 @@ class Converter:
         paths = list()
         path = dict()
         path_string = str()
+        path['data'] = list()
         for shape in shapes:
             if isinstance(shape, Shape.StyleChangeRecord):
-                if 'data' in path.keys():  # add path
+                if len(path_string) > 0:  # add path
                     path_string += 'c'
+                    path['data'] = list()
                     path['data'].append(path_string)
                     paths.append(path)
                     path = dict()
                     path_string = str()
 
-                if shape.state_move_to:
+                if shape.state_move_to and shape.move_delta_x != 0 and shape.move_delta_y != 0:
                     move_string = ''.join(swiffy_integer(x) for x in [0, shape.move_delta_x, shape.move_delta_y])
-                    if 'data' not in path.keys():
-                        path['data'] = list()
                     path_string += move_string
-                if shape.state_fill_style0:
+                if shape.state_fill_style0 and shape.fill_style0 > 0:
                     current_fill0 = fill[shape.fill_style0 - 1]
                     if current_fill0 not in swf_fill_styles:
                         swf_fill_styles.append(current_fill0)
                     fill_index0 = swf_fill_styles.index(current_fill0)
                     path['fill'] = fill_index0
 
-                if shape.state_fill_style1:
+                if shape.state_fill_style1 and shape.fill_style1 > 0:
                     current_fill1 = fill[shape.fill_style1 - 1]
                     if current_fill1 not in swf_fill_styles:
                         swf_fill_styles.append(current_fill1)
                     fill_index1 = swf_fill_styles.index(current_fill1)
                     path['fill'] = fill_index1
 
-                if shape.state_line_style:
+                if shape.state_line_style and shape.line_style > 0:
                     current_line = line[shape.line_style - 1]
                     if current_line not in swf_line_styles:
                         swf_line_styles.append(current_line)
@@ -140,13 +169,18 @@ class Converter:
 
             elif isinstance(shape, Shape.CurvedEdgeRecord):
                 edge_string = ''.join(swiffy_integer(x) for x in [2,
-                                                                  shape.anchor_delta_x,
-                                                                  shape.anchor_delta_y,
+                                                                  shape.control_delta_x,
+                                                                  shape.control_delta_y,
                                                                   shape.anchor_delta_x + shape.control_delta_x,
                                                                   shape.anchor_delta_y + shape.control_delta_y])
                 path_string += edge_string
             elif isinstance(shape, Shape.EndShapeRecord):
-                path_string += 'c'
+                if len(path_string) > 0:
+                    path_string += 'c'
+                    path['data'] = list()
+                    path['data'].append(path_string)
+                    paths.append(path)
+                break
             else:
                 raise Exception
 
@@ -176,7 +210,7 @@ def rectangle_to_string(rectangle):
 
 
 def matrix_to_string(matrix):
-    if not matrix.has_rotate and not matrix.has_scale and matrix.translate_y == 0 and matrix.translate_x ==0:
+    if not matrix.has_rotate and not matrix.has_scale and matrix.translate_y == 0 and matrix.translate_x == 0:
         return 0
     matrix_string = str()
     if matrix.has_scale:
@@ -201,8 +235,8 @@ def rgb_to_int(color):
     green = color.green
     blue = color.blue
     integer = blue + (green << 8) + (red << 16)
-    if (integer & (1 << 23)) > 0:
-        integer += (-1 << 24)
+    # if (integer & (1 << 23)) > 0:
+    integer += (-1 << 24)
     return integer
 
 
