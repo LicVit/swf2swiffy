@@ -122,35 +122,38 @@ class Converter:
         swf_line_styles = list()
         shapes = define_shape.shapes.shape_records
         paths = list()
-        path = dict()
-        path_string = str()
-        path['data'] = list()
+
+        path = Path()
         for shape in shapes:
             if isinstance(shape, Shape.StyleChangeRecord):
-                if len(path_string) > 0:  # add path
-                    path_string += 'c'
-                    path['data'] = list()
-                    path['data'].append(path_string)
-                    paths.append(path)
-                    path = dict()
-                    path_string = str()
+                change_fill0 = shape.state_fill_style0 and shape.fill_style0 > 0
+                change_fill1 = shape.state_fill_style1 and shape.fill_style1 > 0
+                if change_fill0 or change_fill1:
+                    if not path.is_empty:
+                        path.add_end()
+                        paths.append(path.to_swiffy_object())
+                        path = Path()
+
+                    if change_fill0:
+                        current_fill0 = fill[shape.fill_style0 - 1]
+                        if current_fill0 not in swf_fill_styles:
+                            swf_fill_styles.append(current_fill0)
+                        fill_index0 = swf_fill_styles.index(current_fill0)
+                    else:
+                        fill_index0 = None
+
+                    if change_fill1:
+                        current_fill1 = fill[shape.fill_style1 - 1]
+                        if current_fill1 not in swf_fill_styles:
+                            swf_fill_styles.append(current_fill1)
+                        fill_index1 = swf_fill_styles.index(current_fill1)
+                    else:
+                        fill_index1 = None
+
+                    path.set_fill(fill_index0, fill_index1)
 
                 if shape.state_move_to and shape.move_delta_x != 0 and shape.move_delta_y != 0:
-                    move_string = ''.join(swiffy_integer(x) for x in [0, shape.move_delta_x, shape.move_delta_y])
-                    path_string += move_string
-                if shape.state_fill_style0 and shape.fill_style0 > 0:
-                    current_fill0 = fill[shape.fill_style0 - 1]
-                    if current_fill0 not in swf_fill_styles:
-                        swf_fill_styles.append(current_fill0)
-                    fill_index0 = swf_fill_styles.index(current_fill0)
-                    path['fill'] = fill_index0
-
-                if shape.state_fill_style1 and shape.fill_style1 > 0:
-                    current_fill1 = fill[shape.fill_style1 - 1]
-                    if current_fill1 not in swf_fill_styles:
-                        swf_fill_styles.append(current_fill1)
-                    fill_index1 = swf_fill_styles.index(current_fill1)
-                    path['fill'] = fill_index1
+                    path.add_move(shape.move_delta_x, shape.move_delta_y)
 
                 if shape.state_line_style and shape.line_style > 0:
                     current_line = line[shape.line_style - 1]
@@ -164,25 +167,12 @@ class Converter:
                     line = shape.line_styles.line_styles
 
             elif isinstance(shape, Shape.StraightEdgeRecord):
-                straight_string = ''.join(swiffy_integer(x) for x in [1, shape.delta_x, shape.delta_y])
-                path_string += straight_string
-
+                path.add_straight(shape.delta_x, shape.delta_y)
             elif isinstance(shape, Shape.CurvedEdgeRecord):
-                edge_string = ''.join(swiffy_integer(x) for x in [2,
-                                                                  shape.control_delta_x,
-                                                                  shape.control_delta_y,
-                                                                  shape.anchor_delta_x + shape.control_delta_x,
-                                                                  shape.anchor_delta_y + shape.control_delta_y])
-                path_string += edge_string
+                path.add_curved(shape.control_delta_x, shape.control_delta_y, shape.anchor_delta_x, shape.anchor_delta_y)
             elif isinstance(shape, Shape.EndShapeRecord):
-                if len(path_string) > 0:
-                    path_string += 'c'
-                    path['data'] = list()
-                    path['data'].append(path_string)
-                    paths.append(path)
-                break
-            else:
-                raise Exception
+                path.add_end()
+                paths.append(path.to_swiffy_object())
 
         ret['paths'] = paths
         if len(swf_fill_styles) > 0:
@@ -261,3 +251,56 @@ def swiffy_integer(integer):
             end = str((-remain) % 10) + end
             remain = -((-remain) // 10)
         return str(end) + swiffy_integer(remain)
+
+
+class Path:
+    def __init__(self, path_string=str(), fill=0):
+        self.path_string = path_string
+        self.fill = fill
+        self.pen_x = 0
+        self.pen_y = 0
+        self.is_empty = True
+
+    def add_straight(self, delta_x, delta_y):
+        self.pen_x += delta_x
+        self.pen_y += delta_y
+        straight_string = ''.join(swiffy_integer(x) for x in [1, delta_x, delta_y])
+        self.path_string += straight_string
+        self.is_empty = False
+
+    def add_curved(self, control_delta_x, control_delta_y, anchor_delta_x, anchor_delta_y):
+        self.pen_x += anchor_delta_x + control_delta_x
+        self.pen_y += anchor_delta_y + control_delta_y
+        edge_string = ''.join(swiffy_integer(x) for x in [2,
+                                                          control_delta_x,
+                                                          control_delta_y,
+                                                          anchor_delta_x + control_delta_x,
+                                                          anchor_delta_y + control_delta_y])
+        self.path_string += edge_string
+        self.is_empty = False
+
+    def add_move(self, move_x, move_y):
+        delta_x = move_x - self.pen_x
+        delta_y = move_y - self.pen_y
+        move_string = ''.join(swiffy_integer(x) for x in [0, delta_x, delta_y])
+        self.pen_x = move_x
+        self.pen_y = move_y
+        self.path_string += move_string
+
+    def add_end(self):
+        self.path_string += 'c'
+
+    def set_fill(self, fill0, fill1):
+        if fill0 is not None and fill0 > 0:
+            self.fill = fill0
+        elif fill1 is not None and fill1 > 0:
+            self.fill = fill1
+
+    def to_swiffy_object(self):
+        return {
+            'data': [self.path_string],
+            'fill': self.fill
+        }
+
+    def __repr__(self):
+        return 'Path(%r, %r' % (self.path_string, self.fill)

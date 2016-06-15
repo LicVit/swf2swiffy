@@ -65,6 +65,38 @@ class Matrix:
         return ret
 
 
+class Gradient:
+    def __init__(self, spread_mode=None, interpolation_mode=None, num_gradients=None, gradient_records=None, shape_generation=1):
+        self.spread_mode = spread_mode
+        self.interpolation_mode = interpolation_mode
+        self.num_gradients = num_gradients
+        self.gradient_records = gradient_records
+        self.shape_generation = shape_generation
+
+    def __repr__(self):
+        ret = 'Gradient(%r, %r, %r, %r, shape_generation=%r)' % (
+            self.spread_mode,
+            self.interpolation_mode,
+            self.num_gradients,
+            self.gradient_records,
+            self.shape_generation)
+        return ret
+
+
+class GradientRecord:
+    def __init__(self, ratio=None, color=None, shape_generation=1):
+        self.ratio = ratio
+        self.color = color
+        self.shape_generation = shape_generation
+
+    def __repr__(self):
+        ret = 'GradientRecord(%r, %r, shape_generation=%r)' % (
+            self.ratio,
+            self.color,
+            self.shape_generation)
+        return ret
+
+
 class Rectangle:
     def __init__(self, x_min=None, x_max=None, y_min=None, y_max=None):
         self.x_min = x_min
@@ -92,3 +124,34 @@ def read_string(data):
         end += 1
     string = data[:end].decode(encoding='shift-jis')
     return string, end
+
+
+def read_gradient(data, shape_generation=1):
+    ret = Gradient()
+    first_byte = struct.unpack_from('B', data)[0]
+    offset = 1
+    ret.spread_mode = first_byte >> 6
+    ret.interpolation_mode = (first_byte >> 4) & 3
+    ret.num_gradients = first_byte % 0xF
+    gradient_records = list()
+    for i in range(0, ret.num_gradients):
+        gradient_record, size = read_gradient_record(data[offset:], shape_generation=shape_generation)
+        gradient_records.append(gradient_record)
+        offset += size
+    ret.gradient_records = gradient_records
+    return ret, offset
+
+
+def read_gradient_record(data, shape_generation=1):
+    ret = GradientRecord()
+    ret.ratio = struct.unpack_from('B', data, 0)
+    offset = 1
+    if shape_generation <= 2:
+        ret.color = read_rgb(data[offset:])
+        offset += 3
+    else:
+        ret.color = read_rgba(data[offset:])
+        offset += 4
+
+    return ret, offset
+

@@ -129,11 +129,13 @@ class FillStyle:
             else:
                 self.color = BasicData.read_rgba(data[offset:])
                 offset += 4
-        elif self.fill_style_type in [0x10, 0x12, 0x13]:
+        if self.fill_style_type in [0x10, 0x12, 0x13]:
             reader = BitReader.memory_reader(data, offset)
             self.gradient_matrix = reader.read_matrix()
             offset += reader.offset
-            raise NotImplementedError
+        if self.fill_style_type in [0x10, 0x12]:
+            self.gradient, size = BasicData.read_gradient(data[offset:], self.shape_generation)
+            offset += size
         return offset
 
     def __eq__(self, other):
@@ -163,7 +165,7 @@ class LineStyleArray:
 
         self.line_styles = list()
         for i in range(0, count):
-            style = LineStyle()
+            style = LineStyle(shape_generation=self.shape_generation)
             size = style.read_data(data[offset:])
             self.line_styles.append(style)
             offset += size
