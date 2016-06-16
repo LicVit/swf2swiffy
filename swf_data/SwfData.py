@@ -2,6 +2,7 @@ import struct
 
 import swf_data.BasicDataType as BasicData
 import swf_data.BitReader as BitReader
+import swf_data.Action as Action
 from swf_data.ShapeWithStyle import ShapeWithStyle
 
 
@@ -95,12 +96,18 @@ class SwfTag:
             return DefineShape(tag_data=self.tag_data)
         elif self.code == 9:
             return SetBackgroundColor(tag_data=self.tag_data)
+        elif self.code == 12:
+            return DoAction(tag_data=self.tag_data)
         elif self.code == 22:
             return DefineShape(2, tag_data=self.tag_data)
         elif self.code == 26:
             return PlaceObject2(tag_data=self.tag_data)
+        elif self.code == 28:
+            return RemoveObject2(tag_data=self.tag_data)
         elif self.code == 32:
             return DefineShape(3, tag_data=self.tag_data)
+        elif self.code == 34:
+            return DefineButton2(tag_data=self.tag_data)
         elif self.code == 39:
             return DefineSprite(tag_data=self.tag_data)
         elif self.code == 69:
@@ -244,6 +251,15 @@ class DefineSprite(SwfTag):
         return 'DefineSprite(sprite_id=%r, frame_count=%r, control_tags=%r)' % (
             self.sprite_id, self.frame_count, self.control_tags)
 
+    def __str__(self):
+        control_tags_string = str()
+        for tag in self.control_tags:
+            control_tags_string += '    ' + str(tag) + '\n'
+        return 'DefineSprite:\n' \
+               '  id=%s, frame_count=%s,\n' \
+               '  control_tags=\n%s\n' % (
+                   self.sprite_id, self.frame_count, control_tags_string)
+
 
 class PlaceObject2(SwfTag):
     def __init__(self, **kwargs):
@@ -289,7 +305,8 @@ class PlaceObject2(SwfTag):
                 self.matrix = reader.read_matrix()
                 offset = reader.offset
             if self.has_color_transform:
-                self.color_transform = reader.read_matrix()
+                reader.skip_remain_bits()
+                self.color_transform = reader.read_cx_form_alpha()
                 offset = reader.offset
             if self.has_ratio:
                 self.ratio = struct.unpack_from('H', tag_data, offset)[0]
@@ -323,4 +340,88 @@ class PlaceObject2(SwfTag):
         if self.has_clip_actions:
             ret += ', has_clip_actions=%r' % self.has_clip_actions
         ret += ')'
+        return ret
+
+
+class RemoveObject2(SwfTag):
+    def __init__(self, **kwargs):
+        tag_data = kwargs.get('tag_data')
+        if tag_data is None:
+            super().__init__(28)
+            self.depth = kwargs.get('depth')
+        else:
+            super().__init__(code=26, tag_data=tag_data)
+            self.depth = struct.unpack_from('H', tag_data)[0]
+
+    def __repr__(self):
+        ret = 'RemoveObject2(depth=%r)' % self.depth
+        return ret
+
+
+class DoAction(SwfTag):
+    def __init__(self, **kwargs):
+        super().__init__(code=12)
+        tag_data = kwargs.get('tag_data')
+        if tag_data is None:
+            super().__init__(12)
+        else:
+            super().__init__(code=12, tag_data=tag_data)
+            self.actions = list()
+            offset = 0
+            while offset < len(tag_data):
+                action = Action.Action()
+                size = action.read_data(tag_data[offset:])
+                offset += size
+                self.actions.append(action.analyze_action())
+
+    def __repr__(self):
+        ret = 'DoAction(actions=%r)' % self.actions
+        return ret
+
+    def __str__(self):
+        ret = 'DoAction:\n  %s\n' % '\n  '.join(str(x) for x in self.actions)
+        return ret
+
+
+class DefineButton2(SwfTag):
+    def __init__(self, **kwargs):
+        super().__init__(code=34)
+        tag_data = kwargs.get('tag_data')
+        if tag_data is None:
+            super().__init__(34)
+            self.button_id = kwargs.get('button_id')
+            # TODO: Construct
+        else:
+            super().__init__(code=34, tag_data=tag_data)
+            self.button_id = struct.unpack_from('H', tag_data, 0)[0]
+            offset = 2
+            self.track_as_menu = struct.unpack_from('B', tag_data, offset)[0] & 1
+            offset += 1
+            self.action_offset = struct.unpack_from('H', tag_data, offset)[0]
+            action_start = offset + self.action_offset
+            offset += 2
+            self.characters = tag_data[offset:action_start]
+            offset = action_start
+            self.actions = list()
+            while offset < len(tag_data):
+                action = Action.ButtonCondAction()
+                action.read_data(tag_data[offset:])
+                self.actions.append(action)
+                if action.cond_action_size > 0:
+                    offset += action.cond_action_size
+                else:
+                    break
+
+    def __repr__(self):
+        ret = 'DefineButton2(button_id=%r, track_as_menu=%r, action_offset=%r, characters=%r, actions=%r)' % (
+            self.button_id, self.track_as_menu, self.action_offset, self.characters, self.actions
+        )
+        return ret
+
+    def __str__(self):
+        ret = 'DefineButton2:\n button_id=%r,\n track_as_menu=%r,\n action_offset=%r, \ncharacters=%s, \nactions=\n  %s\n)' % (
+            self.button_id, self.track_as_menu, self.action_offset,
+            ' '.join('%02X' % x for x in self.characters),
+            '\n  '.join(str(x) for x in self.actions)
+        )
         return ret

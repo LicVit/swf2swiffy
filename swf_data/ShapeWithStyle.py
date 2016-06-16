@@ -50,6 +50,8 @@ class ShapeWithStyle:
             else:
                 record = CurvedEdgeRecord()
         bit_reader = record.read_data(bit_reader)
+        if isinstance(record, StyleChangeRecord) and record.state_new_styles:
+            self.num_fill_bits, self.num_line_bits = record.get_new_bits()
         return record, bit_reader
 
     def __repr__(self):
@@ -216,7 +218,8 @@ class StyleChangeRecord(ShapeRecord):
         self.state_fill_style1 = end_flag & 0x4 > 0
         self.state_fill_style0 = end_flag & 0x2 > 0
         self.state_move_to = end_flag & 0x1 > 0
-        self.is_end = False
+        self.new_fill_bits = None
+        self.new_line_bits = None
 
     def read_data(self, bit_reader):
         if self.state_move_to:
@@ -240,25 +243,29 @@ class StyleChangeRecord(ShapeRecord):
             offset += size
             num_bits = struct.unpack_from("B", data, offset)[0]
             offset += 1
-            self.num_fill_bits = num_bits >> 4
-            self.num_line_bits = num_bits & 0xF
+            self.new_fill_bits = num_bits >> 4
+            self.new_line_bits = num_bits & 0xF
             bit_reader = BitReader.memory_reader(data[offset:])
         return bit_reader
 
+    def get_new_bits(self):
+        return self.new_fill_bits, self.new_line_bits
+
     def __repr__(self):
         ret = 'StyleChangeRecord('
+        ret += 'num_fill_bits=%r, num_line_bits=%r' % (self.num_fill_bits, self.num_line_bits)
         if self.state_move_to:
-            ret += 'move_delta_x=%r, ' % self.move_delta_x
-            ret += 'move_delta_y=%r, ' % self.move_delta_y
+            ret += ', move_delta_x=%r' % self.move_delta_x
+            ret += ', move_delta_y=%r' % self.move_delta_y
         if self.state_fill_style0:
-            ret += 'fill_style0=%r, ' % self.fill_style0
+            ret += ', fill_style0=%r' % self.fill_style0
         if self.state_fill_style1:
-            ret += 'fill_style1=%r, ' % self.fill_style1
+            ret += ', fill_style1=%r' % self.fill_style1
         if self.state_line_style:
-            ret += 'line_style=%r, ' % self.line_style
+            ret += ', line_style=%r' % self.line_style
         if self.state_new_styles:
-            ret += 'fill_styles=%r, line_styles=%r, num_fill_bits=%r, num_line_bits=%r' % (
-                self.line_style, self.line_styles, self.num_fill_bits, self.num_line_bits)
+            ret += ', fill_styles=%r, line_styles=%r, new_fill_bits=%r, new_line_bits=%r' % (
+                self.fill_styles, self.line_styles, self.new_fill_bits, self.new_line_bits)
         return ret
 
 

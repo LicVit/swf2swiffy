@@ -66,7 +66,8 @@ class Matrix:
 
 
 class Gradient:
-    def __init__(self, spread_mode=None, interpolation_mode=None, num_gradients=None, gradient_records=None, shape_generation=1):
+    def __init__(self, spread_mode=None, interpolation_mode=None, num_gradients=None, gradient_records=None,
+                 shape_generation=1):
         self.spread_mode = spread_mode
         self.interpolation_mode = interpolation_mode
         self.num_gradients = num_gradients
@@ -106,6 +107,25 @@ class Rectangle:
 
     def __repr__(self):
         return 'Rectangle(%r, %r, %r, %r)' % (self.x_min, self.x_max, self.y_min, self.y_max)
+
+
+class CXFormAlpha:
+    def __init__(self, red_mult_term=None, green_mult_term=None, blue_mult_term=None, alpha_mult_term=None,
+                 red_add_term=None, green_add_term=None, blue_add_term=None, alpha_add_term=None):
+        self.red_mult_term = red_mult_term
+        self.green_mult_term = green_mult_term
+        self.blue_mult_term = blue_mult_term
+        self.red_add_term = red_add_term
+        self.green_add_term = green_add_term
+        self.blue_add_term = blue_add_term
+        self.alpha_mult_term = alpha_mult_term
+        self.alpha_add_term = alpha_add_term
+
+    def __repr__(self):
+        ret = 'CXForm(%r, %r, %r, %r, %r, %r, %r, %r)' % (
+            self.red_mult_term, self.green_mult_term, self.blue_mult_term, self.alpha_mult_term,
+            self.red_add_term, self.green_add_term, self.blue_add_term, self.alpha_add_term)
+        return ret
 
 
 def read_rgb(data):
@@ -154,4 +174,3 @@ def read_gradient_record(data, shape_generation=1):
         offset += 4
 
     return ret, offset
-

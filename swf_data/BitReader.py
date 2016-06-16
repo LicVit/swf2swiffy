@@ -85,6 +85,9 @@ class BitReader:
             ret -= (1 << count)
         return ret
 
+    def skip_remain_bits(self):
+        self.skip_bytes(0)
+
     def skip_bytes(self, size):
         self.source.skip_bytes(size)
         self.pool = 0
@@ -133,6 +136,24 @@ class BitReader:
         translate_y = self.read_signed(translate_bits)
         from swf_data.BasicDataType import Matrix
         ret = Matrix(scale_x, scale_y, rotate_skew0, rotate_skew1, translate_x, translate_y)
+        return ret
+
+    def read_cx_form_alpha(self):
+        has_add = self.read(1)
+        has_mult = self.read(1)
+        bits = self.read(4)
+        from swf_data.BasicDataType import CXFormAlpha
+        ret = CXFormAlpha()
+        if has_mult:
+            ret.red_mult_term = self.read_signed(bits)
+            ret.green_mult_term = self.read_signed(bits)
+            ret.blue_mult_term = self.read_signed(bits)
+            ret.alpha_mult_term = self.read_signed(bits)
+        if has_add:
+            ret.red_add_term = self.read_signed(bits)
+            ret.green_add_term = self.read_signed(bits)
+            ret.blue_add_term = self.read_signed(bits)
+            ret.alpha_add_term = self.read_signed(bits)
         return ret
 
 
