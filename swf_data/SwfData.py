@@ -110,6 +110,8 @@ class SwfTag:
             return DefineButton2(tag_data=self.tag_data)
         elif self.code == 39:
             return DefineSprite(tag_data=self.tag_data)
+        elif self.code == 43:
+            return FrameLabel(tag_data=self.tag_data)
         elif self.code == 69:
             return FileAttributes(tag_data=self.tag_data)
         elif self.code == 77:
@@ -360,7 +362,6 @@ class RemoveObject2(SwfTag):
 
 class DoAction(SwfTag):
     def __init__(self, **kwargs):
-        super().__init__(code=12)
         tag_data = kwargs.get('tag_data')
         if tag_data is None:
             super().__init__(12)
@@ -385,7 +386,6 @@ class DoAction(SwfTag):
 
 class DefineButton2(SwfTag):
     def __init__(self, **kwargs):
-        super().__init__(code=34)
         tag_data = kwargs.get('tag_data')
         if tag_data is None:
             super().__init__(34)
@@ -424,4 +424,19 @@ class DefineButton2(SwfTag):
             ' '.join('%02X' % x for x in self.characters),
             '\n  '.join(str(x) for x in self.actions)
         )
+        return ret
+
+
+class FrameLabel(SwfTag):
+    def __init__(self, **kwargs):
+        tag_data = kwargs.get('tag_data')
+        if tag_data is None:
+            super().__init__(code=43)
+            self.name = kwargs.get('name')
+        else:
+            super().__init__(code=43, tag_data=tag_data)
+            self.name, size = BasicData.read_string(tag_data)
+
+    def __repr__(self):
+        ret = 'FrameLabel(name=%r)' % self.name
         return ret

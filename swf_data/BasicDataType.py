@@ -143,7 +143,7 @@ def read_string(data):
     while int(data[end]) > 0:
         end += 1
     string = data[:end].decode(encoding='shift-jis')
-    return string, end
+    return string, end + 1
 
 
 def read_gradient(data, shape_generation=1):

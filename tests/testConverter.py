@@ -19,9 +19,9 @@ class TestConverter(unittest.TestCase):
         json_file.close()
 
     def test_swf(self):
-        swf_file = open('swf/gacha160611_pet_android.swf', "rb")
+        swf_file = open('swf/skyMc_SP_TEST.swf', "rb")
         data = swf_file.read()
         swf_data = SwfData.get_swf(data)
         for tag in swf_data.tags:
-            if tag.code in [12, 34]:
-                print(tag)
+            # if tag.code in [39]:
+            print(tag)
