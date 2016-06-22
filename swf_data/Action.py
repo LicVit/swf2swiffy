@@ -59,7 +59,7 @@ class Action:
         elif self.code == 0x9A:
             return ActionGetURL2(action_data=self.action_data)
         elif self.code == 0x9D:
-            return ActionIf(action_data=self.action_data)
+            return ActionIf(None, action_data=self.action_data)
         elif self.code == 0x9F:
             return ActionGotoFrame2(action_data=self.action_data)
         elif self.code == 0x96:
@@ -165,7 +165,7 @@ class ActionPop(Action):
 
 
 class ActionGetVariable(Action):
-    def __init__(self, **kwargs):
+    def __init__(self):
         super().__init__(code=0x1C)
 
     def __repr__(self):
@@ -173,7 +173,7 @@ class ActionGetVariable(Action):
 
 
 class ActionSetVariable(Action):
-    def __init__(self, **kwargs):
+    def __init__(self):
         super().__init__(code=0x1D)
 
     def __repr__(self):
@@ -189,7 +189,7 @@ class ActionCastOp(Action):
 
 
 class ActionCallFunction(Action):
-    def __init__(self, **kwargs):
+    def __init__(self):
         super().__init__(code=0x3D)
 
     def __repr__(self):
@@ -221,11 +221,16 @@ class ActionSetTarget(Action):
 
 
 class ActionGoToLabel(Action):
-    def __init__(self, **kwargs):
+    def __init__(self, label=None, **kwargs):
         super().__init__(code=0x8C)
+        action_data = kwargs.get('action_data')
+        if action_data is None:
+            self.label = label
+        else:
+            self.label, size = BasicData.read_string(action_data)
 
     def __repr__(self):
-        return 'ActionGoToLabel()'
+        return 'ActionGoToLabel(%r)' % self.label
 
 
 class ActionWaitForFrame2(Action):
@@ -270,17 +275,36 @@ class ActionPush(Action):
 class ActionGetURL2(Action):
     def __init__(self, **kwargs):
         super().__init__(code=0x9A, length=1)
+        action_data = kwargs.get('action_data')
+        if action_data is None:
+            self.send_vars_method = kwargs.get('send_vars_method')
+            self.load_target_flag = kwargs.get('load_target')
+            self.load_variables_flag = kwargs.get('load_variables')
+        else:
+            data_byte = struct.unpack_from('B', action_data)[0]
+            self.load_variables_flag = data_byte & 1
+            data_byte >>= 1
+            self.load_target_flag = data_byte & 1
+            data_byte >>= 5
+            self.send_vars_method = data_byte
 
     def __repr__(self):
-        return 'ActionGetURL2()'
+        return 'ActionGetURL2(send_vars_method=%r, load_target=%r, load_variables=%r)' % (
+            self.send_vars_method, self.load_target_flag, self.load_variables_flag
+        )
 
 
 class ActionIf(Action):
-    def __init__(self, **kwargs):
+    def __init__(self, branch_offset, **kwargs):
         super().__init__(code=0x9D, length=2)
+        action_data = kwargs.get('action_data')
+        if action_data is None:
+            self.branch_offset = branch_offset
+        else:
+            self.branch_offset = struct.unpack_from('h', action_data)
 
     def __repr__(self):
-        return 'ActionIf()'
+        return 'ActionIf(%r)' % self.branch_offset
 
 
 class ActionGotoFrame2(Action):
