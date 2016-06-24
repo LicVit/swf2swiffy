@@ -352,7 +352,7 @@ class RemoveObject2(SwfTag):
             super().__init__(28)
             self.depth = kwargs.get('depth')
         else:
-            super().__init__(code=26, tag_data=tag_data)
+            super().__init__(code=28, tag_data=tag_data)
             self.depth = struct.unpack_from('H', tag_data)[0]
 
     def __repr__(self):

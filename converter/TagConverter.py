@@ -1,12 +1,14 @@
 import swf_data.SwfData as SwfData
 import swf_data.ShapeWithStyle as Shape
 import converter.BasicDataTypeConverter as BasicConverter
-
+import converter.ActionConverter as ActionConverter
 
 class TagConverter:
     convert_control_tag = {
         1: lambda x: {'type': 2},
+        12: lambda x: ActionConverter.convert(x),
         26: lambda x: convert_place_object2(x),
+        28: lambda x: {'type':4, 'depth': x.depth},
     }
 
     convert_tag = {
@@ -126,9 +128,13 @@ def convert_shape(define_shape):
         ret['fillstyles'] = list()
         for style in swf_fill_styles:
             style_object = dict()
-            style_object['color'] = BasicConverter.rgb_to_int(style.color)
             if style.fill_style_type == 0x0:
                 style_object['type'] = 1
+                style_object['color'] = BasicConverter.rgb_to_int(style.color)
+            elif style.fill_style_type == 0x10:
+                style_object['type'] = 2
+                style_object['transform'] = BasicConverter.matrix_to_string(style.gradient_matrix)
+                style_object['gradient'] = [BasicConverter.gradient_to_dict(x) for x in style.gradient.gradient_records]
             else:
                 raise NotImplementedError
             ret['fillstyles'].append(style_object)

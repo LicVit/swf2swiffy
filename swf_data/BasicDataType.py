@@ -147,7 +147,7 @@ def read_string(data):
 
 
 def read_gradient(data, shape_generation=1):
-    ret = Gradient()
+    ret = Gradient(shape_generation=shape_generation)
     first_byte = struct.unpack_from('B', data)[0]
     offset = 1
     ret.spread_mode = first_byte >> 6
@@ -163,8 +163,8 @@ def read_gradient(data, shape_generation=1):
 
 
 def read_gradient_record(data, shape_generation=1):
-    ret = GradientRecord()
-    ret.ratio = struct.unpack_from('B', data, 0)
+    ret = GradientRecord(shape_generation=shape_generation)
+    ret.ratio = struct.unpack_from('B', data, 0)[0]
     offset = 1
     if shape_generation <= 2:
         ret.color = read_rgb(data[offset:])

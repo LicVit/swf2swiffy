@@ -60,3 +60,10 @@ def swiffy_integer(integer):
             end = str((-remain) % 10) + end
             remain = -((-remain) // 10)
         return str(end) + swiffy_integer(remain)
+
+
+def gradient_to_dict(gradient_record):
+    return {
+        'color': rgb_to_int(gradient_record.color),
+        'offset': gradient_record.ratio
+    }
