@@ -1,4 +1,5 @@
 import struct
+import swf_data.BitReader as BitReader
 
 
 class RGB:
@@ -128,6 +129,30 @@ class CXFormAlpha:
         return ret
 
 
+class ButtonRecord:
+    def __init__(self, state_hit_test=None, state_down=None, state_over=None,
+                 state_up=None, character_id=None, place_depth=None, place_matrix=None, color_transform=None,
+                 filter_list=None, blend_mode=None):
+        self.has_blend_mode = blend_mode is not None
+        self.has_filter_list = filter_list is not None
+        self.state_hit_test = state_hit_test
+        self.state_down = state_down
+        self.state_up = state_up
+        self.state_over = state_over
+        self.chatacter_id = character_id
+        self.place_depth = place_depth
+        self.place_matrix = place_matrix
+        self.color_transform = color_transform
+        self.filter_list = filter_list
+        self.blend_mode = blend_mode
+
+    def __repr__(self):
+        ret = 'ButtonRecord(%r, %r, %r, %r, %r, %r, %r, %r, %r, %r)' % \
+              (self.state_hit_test, self.state_down, self.state_over, self.state_up, self.chatacter_id,
+               self.place_depth, self.place_matrix, self.color_transform, self.filter_list, self.blend_mode)
+        return ret
+
+
 def read_rgb(data):
     ret = RGB(*(struct.unpack_from('BBB', data)))
     return ret
@@ -173,4 +198,31 @@ def read_gradient_record(data, shape_generation=1):
         ret.color = read_rgba(data[offset:])
         offset += 4
 
+    return ret, offset
+
+
+def read_button_record(data, button_generation=1):
+    ret = ButtonRecord()
+    flag_byte = struct.unpack_from('B', data)[0]
+    offset = 1
+    ret.has_blend_mode = (flag_byte & 0x20) > 0
+    ret.has_filter_list = (flag_byte & 0x10) > 0
+    ret.state_hit_test = (flag_byte & 0x8) > 00
+    ret.state_down = (flag_byte & 0x4) > 00
+    ret.state_over = (flag_byte & 0x2) > 00
+    ret.state_up = (flag_byte & 0x1) > 0
+    ret.chatacter_id = struct.unpack_from('H', data, offset)[0]
+    offset += 2
+    ret.place_depth = struct.unpack_from('H', data, offset)[0]
+    offset += 2
+    bit_reader = BitReader.memory_reader(data[offset:])
+    ret.place_matrix = bit_reader.read_matrix()
+    if button_generation>=2:
+        ret.color_transform = bit_reader.read_cx_form_alpha()
+        offset += bit_reader.offset
+        if ret.has_filter_list:
+            raise NotImplementedError
+        if ret.has_blend_mode:
+            ret.blend_mode = struct.unpack_from('B', data, offset)[0]
+            offset += 1
     return ret, offset

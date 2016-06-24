@@ -400,7 +400,11 @@ class DefineButton2(SwfTag):
             self.action_offset = struct.unpack_from('H', tag_data, offset)[0]
             action_start = offset + self.action_offset
             offset += 2
-            self.characters = tag_data[offset:action_start]
+            self.characters = list()
+            while offset < action_start - 1:
+                character, size = BasicData.read_button_record(tag_data[offset:action_start], 2)
+                offset += size
+                self.characters.append(character)
             offset = action_start
             self.actions = list()
             while offset < len(tag_data):
@@ -421,7 +425,7 @@ class DefineButton2(SwfTag):
     def __str__(self):
         ret = 'DefineButton2:\n button_id=%r,\n track_as_menu=%r,\n action_offset=%r, \ncharacters=%s, \nactions=\n  %s\n)' % (
             self.button_id, self.track_as_menu, self.action_offset,
-            ' '.join('%02X' % x for x in self.characters),
+            '\n  '.join(str(x) for x in self.characters),
             '\n  '.join(str(x) for x in self.actions)
         )
         return ret

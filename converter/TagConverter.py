@@ -3,18 +3,21 @@ import swf_data.ShapeWithStyle as Shape
 import converter.BasicDataTypeConverter as BasicConverter
 import converter.ActionConverter as ActionConverter
 
+
 class TagConverter:
     convert_control_tag = {
         1: lambda x: {'type': 2},
         12: lambda x: ActionConverter.convert(x),
         26: lambda x: convert_place_object2(x),
-        28: lambda x: {'type':4, 'depth': x.depth},
+        28: lambda x: {'type': 4, 'depth': x.depth},
+        43: lambda x: {'type': 15, 'label': x.name}
     }
 
     convert_tag = {
         2: lambda x: convert_shape(x),
         22: lambda x: convert_shape(x),
         32: lambda x: convert_shape(x),
+        34: lambda x: convert_button(x),
         39: lambda x: convert_sprite(x),
     }
 
@@ -108,8 +111,8 @@ def convert_shape(define_shape):
                 current_line = line[shape.line_style - 1]
                 if current_line not in swf_line_styles:
                     swf_line_styles.append(current_line)
-                line_index = swf_fill_styles.index(current_line)
-                raise NotImplementedError
+                line_index = swf_line_styles.index(current_line)
+                path.line = line_index
 
             if shape.state_new_styles:
                 fill = shape.fill_styles.fill_styles
@@ -139,6 +142,13 @@ def convert_shape(define_shape):
                 raise NotImplementedError
             ret['fillstyles'].append(style_object)
 
+    if len(swf_line_styles) > 0:
+        ret['linestyle'] = list()
+        for style in swf_line_styles:
+            ret['linestyle'].append({'color': BasicConverter.rgb_to_int(style.color),
+                                     'width': style.width
+                                     })
+
     return ret
 
 
@@ -149,6 +159,7 @@ class Path:
         self.pen_x = 0
         self.pen_y = 0
         self.is_empty = True
+        self.line = 0
 
     def add_straight(self, delta_x, delta_y):
         self.pen_x += delta_x
@@ -185,6 +196,9 @@ class Path:
         elif fill1 is not None and fill1 > 0:
             self.fill = fill1
 
+    def set_line(self, line):
+        self.line = line
+
     def to_swiffy_object(self):
         return {
             'data': [self.path_string],
@@ -193,3 +207,8 @@ class Path:
 
     def __repr__(self):
         return 'Path(%r, %r' % (self.path_string, self.fill)
+
+
+def convert_button(define_button):
+    ret = {'type': 10}
+    return ret

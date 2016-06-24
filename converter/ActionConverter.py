@@ -1,6 +1,8 @@
 convert_action = {
+    0x6: lambda x: [{'type': 6}],
     0xE: lambda x: [{'type': 14}],
     0x1D: lambda x: [{'type': 29}],
+    0x8C: lambda x: [{'type': 140, 'label': x.label}],
     0x96: lambda push: [convert_action_push_element(x) for x in push.elements],
 }
 

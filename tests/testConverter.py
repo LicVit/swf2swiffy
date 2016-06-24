@@ -23,5 +23,5 @@ class TestConverter(unittest.TestCase):
         data = swf_file.read()
         swf_data = SwfData.get_swf(data)
         for tag in swf_data.tags:
-            # if tag.code in [39]:
+            # if tag.code in [43]:
             print(tag)
