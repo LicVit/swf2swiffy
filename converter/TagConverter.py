@@ -46,6 +46,10 @@ def convert_place_object2(tag):
     if tag.has_matrix:
         matrix = tag.matrix
         ret['matrix'] = BasicConverter.matrix_to_string(matrix)
+    if tag.has_color_transform:
+        ret['colortransform'] = BasicConverter.cx_form_to_string(tag.color_transform)
+    if tag.has_ratio:
+        ret['ratio'] = tag.ratio
     return ret
 
 
@@ -67,7 +71,8 @@ def convert_sprite(tag):
 def convert_shape(define_shape):
     ret = {'type': 1, 'id': define_shape.shape_id,
            'bounds': BasicConverter.rectangle_to_string(define_shape.shape_bounds),
-           'flat': True}
+           # 'flat': True
+           }
     fill = define_shape.shapes.fill_styles.fill_styles
     line = define_shape.shapes.line_styles.line_styles
     swf_fill_styles = list()
@@ -137,7 +142,8 @@ def convert_shape(define_shape):
             elif style.fill_style_type == 0x10:
                 style_object['type'] = 2
                 style_object['transform'] = BasicConverter.matrix_to_string(style.gradient_matrix)
-                style_object['gradient'] = [BasicConverter.gradient_to_dict(x) for x in style.gradient.gradient_records]
+                style_object['gradient'] = dict()
+                style_object['gradient']['stops'] = [BasicConverter.gradient_to_dict(x) for x in style.gradient.gradient_records]
             else:
                 raise NotImplementedError
             ret['fillstyles'].append(style_object)
@@ -145,7 +151,7 @@ def convert_shape(define_shape):
     if len(swf_line_styles) > 0:
         ret['linestyle'] = list()
         for style in swf_line_styles:
-            ret['linestyle'].append({'color': BasicConverter.rgb_to_int(style.color),
+            ret['linestyles'].append({'color': BasicConverter.rgb_to_int(style.color),
                                      'width': style.width
                                      })
 

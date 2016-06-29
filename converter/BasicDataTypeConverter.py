@@ -30,6 +30,11 @@ def matrix_to_string(matrix):
 
 
 def rgb_to_int(color):
+    from swf_data.BasicDataType import RGBA
+    if isinstance(color, RGBA):
+        if color.alpha != 0:
+            print(color)
+            #raise NotImplementedError
     red = color.red
     green = color.green
     blue = color.blue
@@ -67,3 +72,21 @@ def gradient_to_dict(gradient_record):
         'color': rgb_to_int(gradient_record.color),
         'offset': gradient_record.ratio
     }
+
+
+def cx_form_to_string(cx_form_alpha):
+    ret = ''.join(swiffy_integer(x) for x in [
+        cx_form_alpha.red_mult_term - 256,
+        cx_form_alpha.red_add_term,
+        cx_form_alpha.green_mult_term - 256,
+        cx_form_alpha.green_add_term,
+        cx_form_alpha.blue_mult_term - 256,
+        cx_form_alpha.blue_add_term,
+        cx_form_alpha.alpha_mult_term - 256,
+        cx_form_alpha.alpha_add_term])
+    if ret == "6Y:6Y:6Y:6Y:":
+        ret = "::::::::"
+    elif ret == "::::::::":
+        ret = "6Y:6Y:6Y:6Y:"
+    return ret
+

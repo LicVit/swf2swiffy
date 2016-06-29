@@ -111,8 +111,8 @@ class Rectangle:
 
 
 class CXFormAlpha:
-    def __init__(self, red_mult_term=None, green_mult_term=None, blue_mult_term=None, alpha_mult_term=None,
-                 red_add_term=None, green_add_term=None, blue_add_term=None, alpha_add_term=None):
+    def __init__(self, red_mult_term=0, green_mult_term=0, blue_mult_term=0, alpha_mult_term=0,
+                 red_add_term=0, green_add_term=0, blue_add_term=0, alpha_add_term=0):
         self.red_mult_term = red_mult_term
         self.green_mult_term = green_mult_term
         self.blue_mult_term = blue_mult_term
